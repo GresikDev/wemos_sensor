@@ -8,12 +8,12 @@
 #include <DallasTemperature.h>
 #include <math.h>
 
-double ta = 0;
-double ht = 0;
-double tw = 0;
-double bl = 0;
-double ph = 0;
-double ec = 0;
+double ta = 0; /* Air Temperature */
+double ht = 0; /* Humidity */
+double tw = 0; /* Water Temperature */
+double bl = 0; /* Battery Level */
+double ph = 0; /* Acidity */
+double ec = 0; /* Electric Conductivity */
 
 const char* ssid = "SIHIPO"; /* wifi ssid */
 const char* password = "sistemhidroponik"; /* wifi psk */
