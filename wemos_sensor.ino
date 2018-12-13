@@ -8,6 +8,13 @@
 #include <DallasTemperature.h>
 #include <math.h>
 
+#define VREF 3.3      // analog reference voltage(Volt) of the ADC
+#define SCOUNT  30           // sum of sample point
+int analogBuffer[SCOUNT];    // store the analog value in the array, read from ADC
+int analogBufferTemp[SCOUNT];
+int analogBufferIndex = 0, copyIndex = 0;
+float averageVoltage = 0; // ,tdsValue = 0,temperature = 25;
+
 double ta = 0; /* Air Temperature */
 double ht = 0; /* Humidity */
 double tw = 0; /* Water Temperature */
@@ -28,6 +35,31 @@ DHTesp dht;
 OneWire oneWire(D1);
 DallasTemperature sensors(&oneWire);
 
+int getMedianNum(int bArray[], int iFilterLen)
+{
+  int bTab[iFilterLen];
+  for (byte i = 0; i < iFilterLen; i++)
+    bTab[i] = bArray[i];
+  int i, j, bTemp;
+  for (j = 0; j < iFilterLen - 1; j++)
+  {
+    for (i = 0; i < iFilterLen - j - 1; i++)
+    {
+      if (bTab[i] > bTab[i + 1])
+      {
+        bTemp = bTab[i];
+        bTab[i] = bTab[i + 1];
+        bTab[i + 1] = bTemp;
+      }
+    }
+  }
+  if ((iFilterLen & 1) > 0)
+    bTemp = bTab[(iFilterLen - 1) / 2];
+  else
+    bTemp = (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
+  return bTemp;
+}
+
 void analogSwitch(byte a) {
   digitalWrite(D5, a & 1);
   digitalWrite(D6, a & 2);
@@ -45,11 +77,30 @@ void handleRoot() {
   delay(1);
   analogSwitch(0);
   delay(1);
-  bl = ((double) analogRead(A0) / 1023.0) * 100.0;
+  bl = ((double) analogRead(A0) / 1024.0) * 100.0;
   delay(1);
   analogSwitch(1);
   delay(1);
-  ec = (double) analogRead(A0) * (25.0 / tw) * 0.002;
+
+  static unsigned long analogSampleTimepoint = millis();
+  if (millis() - analogSampleTimepoint > 40U) {
+    analogSampleTimepoint = millis();
+    analogBuffer[analogBufferIndex] = analogRead(A0);
+    analogBufferIndex++;
+    if (analogBufferIndex == SCOUNT)
+      analogBufferIndex = 0;
+  }
+  static unsigned long printTimepoint = millis();
+  if (millis() - printTimepoint > 800U) {
+    printTimepoint = millis();
+    for (copyIndex = 0; copyIndex < SCOUNT; copyIndex++)
+      analogBufferTemp[copyIndex] = analogBuffer[copyIndex];
+    averageVoltage = getMedianNum(analogBufferTemp, SCOUNT) * (float)VREF / 1024.0;
+    float compensationCoefficient = 1.0 + 0.02 * (tw - 25.0);
+    float compensationVolatge = averageVoltage / compensationCoefficient;
+    ec = (133.42 * compensationVolatge * compensationVolatge * compensationVolatge - 255.86 * compensationVolatge * compensationVolatge + 857.39 * compensationVolatge) * 0.5;
+  }
+
   delay(1);
   analogSwitch(2);
   delay(1);
@@ -170,7 +221,7 @@ void setup() {
   server.on("/ui", handleUI);
   server.onNotFound(handleNotFound);
   server.begin();
-  
+
   Serial.println("HTTP server started");
 }
 
