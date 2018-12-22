@@ -75,11 +75,15 @@ void handleRoot() {
   sensors.requestTemperatures();
   tw = sensors.getTempCByIndex(0);
   delay(1);
-  analogSwitch(0);
+  analogSwitch(13);
   delay(1);
   bl = ((double) analogRead(A0) / 1024.0) * 100.0;
   delay(1);
-  analogSwitch(1);
+  analogSwitch(14);
+  delay(1);
+  ph = (double) analogRead(A0) / 50.0;
+  delay(1);
+  analogSwitch(15);
   delay(1);
 
   static unsigned long analogSampleTimepoint = millis();
@@ -98,13 +102,8 @@ void handleRoot() {
     averageVoltage = getMedianNum(analogBufferTemp, SCOUNT) * (float)VREF / 1024.0;
     float compensationCoefficient = 1.0 + 0.02 * (tw - 25.0);
     float compensationVolatge = averageVoltage / compensationCoefficient;
-    ec = (133.42 * compensationVolatge * compensationVolatge * compensationVolatge - 255.86 * compensationVolatge * compensationVolatge + 857.39 * compensationVolatge) * 0.5;
+    ec = (133.42 * compensationVolatge * compensationVolatge * compensationVolatge - 255.86 * compensationVolatge * compensationVolatge + 857.39 * compensationVolatge) / 1000.0; //  * 0.5;
   }
-
-  delay(1);
-  analogSwitch(2);
-  delay(1);
-  ph = (double) analogRead(A0) / 50.0;
 
   String out = "{\"id\":\"" + device_id + "\",\"type\":\"" + device_type + "\",\"value\":{";
   String out2 = "";
